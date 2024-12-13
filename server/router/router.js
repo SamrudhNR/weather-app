@@ -2,11 +2,12 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import authenticate from '../middleware/authorize.js'
 import { createReport, getReportsForUser } from '../models/WeatherReport.js';
 import database from '../../server/config/database.js';
 const { pool } = database;
 import dotenv from 'dotenv';
-dotenv.config(); // Ensure .env variables are loaded
+dotenv.config();
 
 
 const router = express.Router();
@@ -16,29 +17,40 @@ const WEATHER_API_KEY = process.env.WEATHER_API_KEY || 'your_weatherstack_api_ke
 
 // Signup Route
 router.post('/signup', async (req, res) => {
-  const { username, email, password } = req.body;
+  console.log("Request body:", req.body);  // Log the request body to check its contents
 
-  if (!username || !email || !password) {
+  const { password, email,name } = req.body;
+  console.log(password,email,name)
+
+  if (!name || !email || !password) {
+    console.log("problem")
     return res.status(400).json({ message: 'All fields are required' });
   }
 
+  
   try {
     // Check if the user already exists
     const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    console.log('userchech:',userCheck.rows)
     if (userCheck.rows.length > 0) {
       return res.status(400).json({ message: 'User already exists' });
     }
+    console.log('user does not exist')
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+
+    console.log('Executing SQL:', 'INSERT INTO users (username, email, password) VALUES ($1, $2, $3)');
+    console.log('Values:', [name, email, hashedPassword]);
     // Insert the new user into the database
     await pool.query(
       'INSERT INTO users (username, email, password) VALUES ($1, $2, $3)',
-      [username, email, hashedPassword]
+      [name, email, hashedPassword]
     );
-
+  
     res.status(201).json({ message: 'User registered successfully' });
+    
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });
@@ -164,6 +176,15 @@ router.get('/weatherget/getreports', async (req, res) => {
       return res.status(403).json({ message: 'Invalid token' });
     }
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.post("/verify", authenticate, (req, res) => {
+  try {
+    res.json(true);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server error");
   }
 });
 

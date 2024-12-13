@@ -8,7 +8,11 @@ const { json } = bodyParser;
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000',  // Allow only requests from your frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Allow specific HTTP methods
+  credentials: true, // Allow cookies or authorization headers if needed
+}));
 app.use(json());
 
 // Register your routes
